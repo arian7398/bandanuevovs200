@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verificación de Código</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <style>
+      body {
+        background-color: #f8f9fa;
+        font-family: Arial, sans-serif;
+      }
+      .verification-container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 50px;
+      }
+      .logo {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .logo img {
+        max-width: 150px;
+      }
+      .verification-title {
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #343a40;
+      }
+      .verification-subtitle {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #6c757d;
+      }
+      .verification-input {
+        font-size: 20px;
+        letter-spacing: 5px;
+        text-align: center;
+      }
+      .countdown {
+        text-align: center;
+        font-size: 16px;
+        margin-top: 20px;
+        color: #dc3545;
+      }
+      .btn-primary {
+        background-color: #4285F4;
+        border-color: #4285F4;
+      }
+      .btn-primary:hover {
+        background-color: #3367d6;
+        border-color: #3367d6;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="verification-container">
+        <div class="logo">
+          <!-- Puedes reemplazar esto con tu logo -->
+          <i class="fas fa-shield-alt fa-3x text-primary"></i>
+        </div>
+        
+        <h1 class="verification-title">Verificación de acceso</h1>
+        <p class="verification-subtitle">Hemos enviado un código de verificación a tu correo electrónico. Por favor ingresa el código de 6 dígitos para continuar.</p>
+        
+        <div class="alert alert-danger hidden" id="errorAlert" role="alert"></div>
+        <div class="alert alert-success hidden" id="successAlert" role="alert"></div>
+        
+        <form id="verificationForm" onsubmit="return false;">
+          <input type="hidden" id="usernameField" name="username">
+          
+          <div class="mb-4">
+            <input type="text" class="form-control verification-input" id="verificationCode" placeholder="------" maxlength="6" required>
+          </div>
+          
+          <p class="countdown" id="countdown">Este código expirará en: 10:00</p>
+          
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary btn-lg" onclick="verifyCode()">Verificar</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="window.location.href='?action=login'">Volver al inicio de sesión</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <script>
+      // Variable para el temporizador de cuenta regresiva
+      // Variable para el temporizador de cuenta regresiva
+      let countdownInterval;
+      // Variable para almacenar el nombre de usuario
+      let currentUsername = '';
+        
+      // Iniciar la cuenta regresiva al cargar la página
+      window.onload = function() {
+        // Recibir el username directamente desde el servidor
+        // Esta línea es clave - obtenemos el valor que envía doGet
+        currentUsername = '<?= username ?>' || '';
+        
+        // Si no hay username desde el servidor, intentar obtenerlo de la URL o localStorage
+        if (!currentUsername) {
+          const urlParams = new URLSearchParams(window.location.search);
+          currentUsername = urlParams.get('username') || localStorage.getItem('pendingVerificationUser');
+        }
+        
+        // Guardar el nombre de usuario en un campo oculto del formulario
+        document.getElementById('usernameField').value = currentUsername;
+        
+        console.log("Usuario actual:", currentUsername); // Para depuración
+        
+        if (!currentUsername) {
+          showError("Error: No se pudo determinar el usuario. Por favor, inicie sesión nuevamente.");
+          document.getElementById('verificationForm').classList.add('hidden');
+          return;
+        }
+        
+        // Guardar el username en localStorage por si la página se recarga
+        localStorage.setItem('pendingVerificationUser', currentUsername);
+        
+        // Iniciar la cuenta regresiva
+        startCountdown();
+      };
+      /*       function verifyCode() {
+        const code = document.getElementById('verificationCode').value;
+        
+        if (!code || code.length !== 6) {
+          showError('Por favor, ingrese el código de 6 dígitos');
+          return;
+        }
+        
+        // Mostrar un indicador de carga
+        document.querySelector('.btn-primary').disabled = true;
+        document.querySelector('.btn-primary').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verificando...';
+        
+        // Obtener el nombre de usuario del campo oculto
+        const username = document.getElementById('usernameField').value;
+        
+        google.script.run
+          .withSuccessHandler(handleVerificationResponse)
+          .withFailureHandler(handleVerificationError)
+          .verifyCode(username, code);
+      }
+       */
+
+      function verifyCode() {
+        const codeInput = document.getElementById('verificationCode');
+        let code = codeInput.value;
+        
+        // Limpiar el código (eliminar espacios)
+        code = code.trim();
+        
+        if (!code || code.length !== 6) {
+          showError('Por favor, ingrese el código de 6 dígitos');
+          return;
+        }
+        
+        // Mostrar un indicador de carga
+        document.querySelector('.btn-primary').disabled = true;
+        document.querySelector('.btn-primary').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verificando...';
+        
+        // Obtener el nombre de usuario del campo oculto
+        const username = document.getElementById('usernameField').value;
+        
+        console.log("Enviando verificación - Usuario: " + username + ", Código: " + code);
+        
+        google.script.run
+          .withSuccessHandler(function(response) {
+            console.log("Respuesta del servidor:", response);
+            handleVerificationResponse(response);
+          })
+          .withFailureHandler(function(error) {
+            console.error("Error del servidor:", error);
+            handleVerificationError(error);
+          })
+          .verifyCode(username, code);
+      }
+
+
+
+        /*       function handleVerificationResponse(response) {
+        if (!response.success) {
+          showError(response.message);
+          document.querySelector('.btn-primary').disabled = false;
+          document.querySelector('.btn-primary').innerHTML = 'Verificar';
+          return;
+        }
+        
+        // Mostrar mensaje de éxito
+        showSuccess("Verificación exitosa, redirigiendo...");
+        
+        // Detener la cuenta regresiva
+        clearInterval(countdownInterval);
+        
+        // Limpiar el localStorage
+        localStorage.removeItem('pendingVerificationUser');
+        
+        // Redirigir según el rol
+        setTimeout(function() {
+          window.location.href = "?action=formulario";
+        }, 1500);
+      } */
+      
+      function handleVerificationResponse(response) {
+        console.log("Respuesta del servidor:", response);
+        
+        if (!response.success) {
+          showError(response.message);
+          document.querySelector('.btn-primary').disabled = false;
+          document.querySelector('.btn-primary').innerHTML = 'Verificar';
+          return;
+        }
+        
+        // Mostrar mensaje de éxito
+        showSuccess("Verificación exitosa, redirigiendo...");
+        
+        // Detener la cuenta regresiva
+        clearInterval(countdownInterval);
+        
+        // Limpiar el localStorage
+        localStorage.removeItem('pendingVerificationUser');
+        
+        // Redirigir utilizando la URL proporcionada por el servidor o una ruta por defecto
+        setTimeout(function() {
+          if (response.redirectUrl) {
+            // Usar la URL proporcionada por el servidor
+            console.log("Redirigiendo a:", response.redirectUrl);
+            window.top.location.href = response.redirectUrl;
+          } else {
+            // Usar un enfoque alternativo si no hay URL de redirección
+            console.log("Usando redirección alternativa");
+            
+            // Intento 1: URL relativa basada en la URL actual
+            const baseUrl = window.location.href.split('?')[0];
+            window.top.location.href = baseUrl + "?action=formulario";
+            
+            // Intento 2: Si el anterior no funciona, usar una ruta simple
+            setTimeout(function() {
+              if (window.location.href.indexOf("action=formulario") === -1) {
+                window.location.href = "?action=formulario";
+                
+                // Intento 3: Último recurso
+                setTimeout(function() {
+                  if (window.location.href.indexOf("action=formulario") === -1) {
+                    alert("Por favor, haga clic en OK para continuar al formulario.");
+                    window.location.replace("?action=formulario");
+                  }
+                }, 1000);
+              }
+            }, 1000);
+          }
+        }, 1500);
+      }
+
+
+      
+      function handleVerificationError(error) {
+        showError('Error: ' + error.message);
+        document.querySelector('.btn-primary').disabled = false;
+        document.querySelector('.btn-primary').innerHTML = 'Verificar';
+      }
+      
+      function showError(message) {
+        const errorAlert = document.getElementById('errorAlert');
+        errorAlert.textContent = message;
+        errorAlert.classList.remove('hidden');
+        
+        // Ocultar después de 5 segundos
+        setTimeout(function() {
+          errorAlert.classList.add('hidden');
+        }, 5000);
+      }
+      
+      function showSuccess(message) {
+        const successAlert = document.getElementById('successAlert');
+        successAlert.textContent = message;
+        successAlert.classList.remove('hidden');
+      }
+      
+      function startCountdown() {
+        let timeLeft = 10 * 60; // 10 minutos en segundos
+        const countdownElement = document.getElementById('countdown');
+        
+        countdownInterval = setInterval(function() {
+          timeLeft--;
+          
+          if (timeLeft <= 0) {
+            clearInterval(countdownInterval);
+            showError('El código ha expirado. Por favor, inicie sesión nuevamente.');
+            setTimeout(function() {
+              window.location.href = "?action=login";
+            }, 3000);
+            return;
+          }
+          
+          const minutes = Math.floor(timeLeft / 60);
+          const seconds = timeLeft % 60;
+          countdownElement.textContent = `Este código expirará en: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }, 1000);
+      }
+    </script>
+  </body>
+</html>
